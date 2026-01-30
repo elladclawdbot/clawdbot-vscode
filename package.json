@@ -1,0 +1,61 @@
+{
+  "name": "clawdbot-vscode",
+  "displayName": "Clawdbot",
+  "description": "Clawdbot VS Code extension (side panel, debug console, gateway relay)",
+  "version": "0.0.1",
+  "publisher": "elladclawdbot",
+  "engines": { "vscode": "^1.90.0" },
+  "categories": ["Other"],
+  "activationEvents": ["onView:clawdbot.panel", "onCommand:clawdbot.sendPrompt"],
+  "main": "./out/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "clawdbot",
+          "title": "Clawdbot",
+          "icon": "media/clawdbot.svg"
+        }
+      ]
+    },
+    "views": {
+      "clawdbot": [
+        { "id": "clawdbot.panel", "name": "Assistant" }
+      ]
+    },
+    "commands": [
+      { "command": "clawdbot.sendPrompt", "title": "Clawdbot: Send Prompt" },
+      { "command": "clawdbot.sendSelection", "title": "Clawdbot: Send Selection" }
+    ],
+    "configuration": {
+      "title": "Clawdbot",
+      "properties": {
+        "clawdbot.gatewayUrl": {
+          "type": "string",
+          "default": "http://127.0.0.1:19000",
+          "description": "Clawdbot gateway URL"
+        },
+        "clawdbot.gatewayToken": {
+          "type": "string",
+          "default": "",
+          "description": "Clawdbot gateway token"
+        },
+        "clawdbot.includeDebugConsole": {
+          "type": "boolean",
+          "default": true,
+          "description": "Include debug console output in context"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "devDependencies": {
+    "@types/node": "^20.12.0",
+    "@types/vscode": "^1.90.0",
+    "typescript": "^5.4.5"
+  }
+}
