@@ -4,9 +4,16 @@
   "description": "Clawdbot VS Code extension (side panel, debug console, gateway relay)",
   "version": "0.0.1",
   "publisher": "elladclawdbot",
-  "engines": { "vscode": "^1.90.0" },
-  "categories": ["Other"],
-  "activationEvents": ["onView:clawdbot.panel", "onCommand:clawdbot.sendPrompt"],
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onView:clawdbot.panel",
+    "onCommand:clawdbot.sendPrompt"
+  ],
   "main": "./out/extension.js",
   "contributes": {
     "viewsContainers": {
@@ -20,12 +27,22 @@
     },
     "views": {
       "clawdbot": [
-        { "id": "clawdbot.panel", "name": "Assistant" }
+        {
+          "id": "clawdbot.panel",
+          "name": "Assistant",
+          "type": "webview"
+        }
       ]
     },
     "commands": [
-      { "command": "clawdbot.sendPrompt", "title": "Clawdbot: Send Prompt" },
-      { "command": "clawdbot.sendSelection", "title": "Clawdbot: Send Selection" }
+      {
+        "command": "clawdbot.sendPrompt",
+        "title": "Clawdbot: Send Prompt"
+      },
+      {
+        "command": "clawdbot.sendSelection",
+        "title": "Clawdbot: Send Selection"
+      }
     ],
     "configuration": {
       "title": "Clawdbot",
