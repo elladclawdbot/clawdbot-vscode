@@ -40,17 +40,54 @@ class ClawdbotViewProvider implements vscode.WebviewViewProvider {
     this.view = view;
     view.webview.options = { enableScripts: true };
     view.webview.html = this.getHtml();
-    view.webview.onDidReceiveMessage((msg) => {
+    view.webview.onDidReceiveMessage(async (msg) => {
       if (msg.type === 'send') {
-        this.sendPrompt(msg.text);
+        await this.sendPrompt(msg.text);
       }
     });
   }
 
   async sendPrompt(text: string) {
     console.log('[Clawdbot] sendPrompt:', text);
-    if (this.view) {
-      this.view.webview.postMessage({ type: 'log', text: `Sent: ${text}` });
+    if (!this.view) return;
+
+    const cfg = vscode.workspace.getConfiguration('clawdbot');
+    const gatewayUrl = cfg.get<string>('gatewayUrl') || '';
+    const gatewayToken = cfg.get<string>('gatewayToken') || '';
+
+    if (!gatewayUrl || !gatewayToken) {
+      this.view.webview.postMessage({
+        type: 'log',
+        text: 'Missing gatewayUrl or gatewayToken in settings.'
+      });
+      return;
+    }
+
+    try {
+      const res = await fetch(`${gatewayUrl.replace(/\/$/, '')}/v1/responses`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${gatewayToken}`,
+          'x-clawdbot-agent-id': 'main'
+        },
+        body: JSON.stringify({
+          model: 'clawdbot:main',
+          input: text
+        })
+      });
+
+      if (!res.ok) {
+        const errText = await res.text();
+        this.view.webview.postMessage({ type: 'log', text: `Gateway error: ${res.status} ${errText}` });
+        return;
+      }
+
+      const data: any = await res.json();
+      const outputText = extractOutputText(data);
+      this.view.webview.postMessage({ type: 'log', text: outputText || JSON.stringify(data) });
+    } catch (err: any) {
+      this.view.webview.postMessage({ type: 'log', text: `Request failed: ${err?.message || err}` });
     }
   }
 
@@ -78,6 +115,24 @@ class ClawdbotViewProvider implements vscode.WebviewViewProvider {
   </body>
 </html>`;
   }
+}
+
+function extractOutputText(data: any): string {
+  if (!data) return '';
+  if (typeof data.output_text === 'string') return data.output_text;
+  if (Array.isArray(data.output)) {
+    const parts: string[] = [];
+    for (const item of data.output) {
+      if (!item || !Array.isArray(item.content)) continue;
+      for (const c of item.content) {
+        if (c.type === 'output_text' && typeof c.text === 'string') {
+          parts.push(c.text);
+        }
+      }
+    }
+    return parts.join('');
+  }
+  return '';
 }
 
 export function deactivate() {
