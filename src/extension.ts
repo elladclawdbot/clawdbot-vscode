@@ -41,6 +41,7 @@ class ClawdbotViewProvider implements vscode.WebviewViewProvider {
     view.webview.options = { enableScripts: true };
     view.webview.html = this.getHtml();
     view.webview.onDidReceiveMessage(async (msg) => {
+      console.log('[Clawdbot] onDidReceiveMessage:', msg);
       if (msg.type === 'send') {
         await this.sendPrompt(msg.text);
       }
@@ -50,6 +51,9 @@ class ClawdbotViewProvider implements vscode.WebviewViewProvider {
   async sendPrompt(text: string) {
     console.log('[Clawdbot] sendPrompt:', text);
     if (!this.view) return;
+
+    // immediate echo in panel
+    this.view.webview.postMessage({ type: 'log', text: `You: ${text}` });
 
     const cfg = vscode.workspace.getConfiguration('clawdbot');
     const gatewayUrl = cfg.get<string>('gatewayUrl') || '';
@@ -100,9 +104,11 @@ class ClawdbotViewProvider implements vscode.WebviewViewProvider {
     <button id="send">Send</button>
     <pre id="log"></pre>
     <script>
+      const vscode = acquireVsCodeApi();
       const log = document.getElementById('log');
       document.getElementById('send').onclick = () => {
         const text = document.getElementById('prompt').value;
+        log.textContent += '[webview] click send\n';
         vscode.postMessage({ type: 'send', text });
       };
       window.addEventListener('message', (event) => {
@@ -110,7 +116,6 @@ class ClawdbotViewProvider implements vscode.WebviewViewProvider {
           log.textContent += event.data.text + '\n';
         }
       });
-      const vscode = acquireVsCodeApi();
     </script>
   </body>
 </html>`;
