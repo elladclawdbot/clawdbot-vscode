@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 
-const EXT_VERSION = '0.0.3';
+const EXT_VERSION = '0.0.4';
+let flutterTerminal: vscode.Terminal | undefined;
 
 export function activate(context: vscode.ExtensionContext) {
   console.log(`[Clawdbot] Extension activated v${EXT_VERSION}`);
@@ -31,6 +32,36 @@ export function activate(context: vscode.ExtensionContext) {
       if (!editor) return;
       const sel = editor.document.getText(editor.selection);
       if (sel) provider.sendPrompt(sel);
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('clawdbot.flutterRun', async () => {
+      const cfg = vscode.workspace.getConfiguration('clawdbot');
+      const cmd = cfg.get<string>('flutterRunCommand') || 'flutter run';
+      flutterTerminal = flutterTerminal ?? vscode.window.createTerminal('Clawdbot Flutter');
+      flutterTerminal.show();
+      flutterTerminal.sendText(cmd);
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('clawdbot.flutterHotReload', async () => {
+      if (!flutterTerminal) {
+        vscode.window.showWarningMessage('Flutter terminal not started. Run Clawdbot: Flutter Run first.');
+        return;
+      }
+      flutterTerminal.sendText('r');
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('clawdbot.flutterHotRestart', async () => {
+      if (!flutterTerminal) {
+        vscode.window.showWarningMessage('Flutter terminal not started. Run Clawdbot: Flutter Run first.');
+        return;
+      }
+      flutterTerminal.sendText('R');
     })
   );
 }

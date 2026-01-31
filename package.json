@@ -2,7 +2,7 @@
   "name": "clawdbot-vscode",
   "displayName": "Clawdbot",
   "description": "Clawdbot VS Code extension (side panel, debug console, gateway relay)",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "publisher": "elladclawdbot",
   "engines": {
     "vscode": "^1.90.0"
@@ -42,6 +42,18 @@
       {
         "command": "clawdbot.sendSelection",
         "title": "Clawdbot: Send Selection"
+      },
+      {
+        "command": "clawdbot.flutterRun",
+        "title": "Clawdbot: Flutter Run"
+      },
+      {
+        "command": "clawdbot.flutterHotReload",
+        "title": "Clawdbot: Flutter Hot Reload"
+      },
+      {
+        "command": "clawdbot.flutterHotRestart",
+        "title": "Clawdbot: Flutter Hot Restart"
       }
     ],
     "configuration": {
@@ -61,6 +73,11 @@
           "type": "boolean",
           "default": true,
           "description": "Include debug console output in context"
+        },
+        "clawdbot.flutterRunCommand": {
+          "type": "string",
+          "default": "flutter run",
+          "description": "Command to run Flutter (e.g. flutter run -d chrome)"
         }
       }
     }
