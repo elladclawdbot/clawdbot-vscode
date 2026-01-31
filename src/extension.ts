@@ -1,6 +1,14 @@
 import * as vscode from 'vscode';
 
 export function activate(context: vscode.ExtensionContext) {
+  console.log('[Clawdbot] Extension activated');
+
+  const status = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
+  status.text = 'Clawdbot: Ready';
+  status.tooltip = 'Clawdbot extension is active';
+  status.show();
+  context.subscriptions.push(status);
+
   const provider = new ClawdbotViewProvider(context.extensionUri);
   context.subscriptions.push(
     vscode.window.registerWebviewViewProvider('clawdbot.panel', provider)
@@ -40,7 +48,7 @@ class ClawdbotViewProvider implements vscode.WebviewViewProvider {
   }
 
   async sendPrompt(text: string) {
-    // TODO: collect context + debug console + send to gateway
+    console.log('[Clawdbot] sendPrompt:', text);
     if (this.view) {
       this.view.webview.postMessage({ type: 'log', text: `Sent: ${text}` });
     }
@@ -72,4 +80,6 @@ class ClawdbotViewProvider implements vscode.WebviewViewProvider {
   }
 }
 
-export function deactivate() {}
+export function deactivate() {
+  console.log('[Clawdbot] Extension deactivated');
+}
