@@ -11,7 +11,9 @@ export function activate(context: vscode.ExtensionContext) {
 
   const provider = new ClawdbotViewProvider(context.extensionUri);
   context.subscriptions.push(
-    vscode.window.registerWebviewViewProvider('clawdbot.panel', provider)
+    vscode.window.registerWebviewViewProvider('clawdbot.panel', provider, {
+      webviewOptions: { retainContextWhenHidden: true }
+    })
   );
 
   context.subscriptions.push(
@@ -101,11 +103,12 @@ class ClawdbotViewProvider implements vscode.WebviewViewProvider {
   <body>
     <h3>Clawdbot</h3>
     <textarea id="prompt" rows="4" style="width:100%"></textarea>
-    <button id="send">Send</button>
+    <button id="send" type="button">Send</button>
     <pre id="log"></pre>
     <script>
       const vscode = acquireVsCodeApi();
       const log = document.getElementById('log');
+      log.textContent += '[webview] ready\n';
       document.getElementById('send').onclick = () => {
         const text = document.getElementById('prompt').value;
         log.textContent += '[webview] click send\n';
