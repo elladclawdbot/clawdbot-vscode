@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 
-const EXT_VERSION = '0.0.5';
+const EXT_VERSION = '0.0.6';
 let flutterTerminal: vscode.Terminal | undefined;
 
 export function activate(context: vscode.ExtensionContext) {
@@ -103,10 +103,19 @@ class ClawdbotViewProvider implements vscode.WebviewViewProvider {
       return;
     }
 
-    const context = includeWorkspace ? collectWorkspaceContext() : undefined;
+    const context = includeWorkspace ? await collectWorkspaceContext() : undefined;
 
     try {
-      const inputText = context ? `${text}\n\n[WorkspaceContext]\n${context}` : text;
+      const preamble = [
+        'You are answering inside a VS Code extension on the user\'s machine.',
+        'Use the provided WorkspaceContext to reason about files and paths.',
+        'Do NOT assume access to the server filesystem.'
+      ].join(' ');
+
+      const inputText = context
+        ? `${preamble}\n\nUserPrompt:\n${text}\n\n[WorkspaceContext]\n${context}`
+        : `${preamble}\n\nUserPrompt:\n${text}`;
+
       const res = await fetch(`${gatewayUrl.replace(/\/$/, '')}/v1/responses`, {
         method: 'POST',
         headers: {
@@ -166,7 +175,7 @@ class ClawdbotViewProvider implements vscode.WebviewViewProvider {
   }
 }
 
-function collectWorkspaceContext(): string {
+async function collectWorkspaceContext(): Promise<string> {
   const parts: string[] = [];
   const folders = vscode.workspace.workspaceFolders || [];
   if (folders.length === 0) {
@@ -186,6 +195,19 @@ function collectWorkspaceContext(): string {
     if (sel) {
       parts.push('selection:');
       parts.push(sel);
+    }
+  }
+
+  // file list (paths only)
+  const cfg = vscode.workspace.getConfiguration('clawdbot');
+  const maxFiles = cfg.get<number>('maxWorkspaceFiles') ?? 200;
+  const excludes = '**/{.git,node_modules,build,dist,ios/Pods,android/.gradle,**/*.lock}';
+  const files = await vscode.workspace.findFiles('**/*', excludes, maxFiles);
+  if (files.length) {
+    parts.push(`workspaceFiles (first ${files.length}):`);
+    for (const f of files) {
+      const rel = folders[0] ? path.relative(folders[0].uri.fsPath, f.uri.fsPath) : f.uri.fsPath;
+      parts.push(`- ${rel}`);
     }
   }
 
