@@ -1,10 +1,12 @@
 import * as vscode from 'vscode';
 
+const EXT_VERSION = '0.0.2';
+
 export function activate(context: vscode.ExtensionContext) {
-  console.log('[Clawdbot] Extension activated');
+  console.log(`[Clawdbot] Extension activated v${EXT_VERSION}`);
 
   const status = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
-  status.text = 'Clawdbot: Ready';
+  status.text = `Clawdbot v${EXT_VERSION}`;
   status.tooltip = 'Clawdbot extension is active';
   status.show();
   context.subscriptions.push(status);
@@ -54,7 +56,6 @@ class ClawdbotViewProvider implements vscode.WebviewViewProvider {
     console.log('[Clawdbot] sendPrompt:', text);
     if (!this.view) return;
 
-    // immediate echo in panel
     this.view.webview.postMessage({ type: 'log', text: `You: ${text}` });
 
     const cfg = vscode.workspace.getConfiguration('clawdbot');
@@ -101,7 +102,7 @@ class ClawdbotViewProvider implements vscode.WebviewViewProvider {
     return `<!doctype html>
 <html>
   <body>
-    <h3>Clawdbot</h3>
+    <h3>Clawdbot v${EXT_VERSION}</h3>
     <textarea id="prompt" rows="4" style="width:100%"></textarea>
     <button id="send" type="button">Send</button>
     <pre id="log"></pre>
@@ -144,5 +145,5 @@ function extractOutputText(data: any): string {
 }
 
 export function deactivate() {
-  console.log('[Clawdbot] Extension deactivated');
+  console.log(`[Clawdbot] Extension deactivated v${EXT_VERSION}`);
 }
