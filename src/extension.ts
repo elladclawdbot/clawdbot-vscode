@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
+import * as path from 'path';
 
-const EXT_VERSION = '0.0.4';
+const EXT_VERSION = '0.0.5';
 let flutterTerminal: vscode.Terminal | undefined;
 
 export function activate(context: vscode.ExtensionContext) {
@@ -92,6 +93,7 @@ class ClawdbotViewProvider implements vscode.WebviewViewProvider {
     const cfg = vscode.workspace.getConfiguration('clawdbot');
     const gatewayUrl = cfg.get<string>('gatewayUrl') || '';
     const gatewayToken = cfg.get<string>('gatewayToken') || '';
+    const includeWorkspace = cfg.get<boolean>('includeWorkspaceContext') ?? true;
 
     if (!gatewayUrl || !gatewayToken) {
       this.view.webview.postMessage({
@@ -101,7 +103,10 @@ class ClawdbotViewProvider implements vscode.WebviewViewProvider {
       return;
     }
 
+    const context = includeWorkspace ? collectWorkspaceContext() : undefined;
+
     try {
+      const inputText = context ? `${text}\n\n[WorkspaceContext]\n${context}` : text;
       const res = await fetch(`${gatewayUrl.replace(/\/$/, '')}/v1/responses`, {
         method: 'POST',
         headers: {
@@ -111,7 +116,7 @@ class ClawdbotViewProvider implements vscode.WebviewViewProvider {
         },
         body: JSON.stringify({
           model: 'clawdbot:main',
-          input: text
+          input: inputText
         })
       });
 
@@ -142,10 +147,12 @@ class ClawdbotViewProvider implements vscode.WebviewViewProvider {
       '      const vscode = acquireVsCodeApi();',
       '      const log = document.getElementById("log");',
       "      log.textContent += '[webview] ready\\n';",
+      '      const prompt = document.getElementById("prompt");',
       '      document.getElementById("send").onclick = () => {',
-      '        const text = document.getElementById("prompt").value;',
+      '        const text = prompt.value;',
       "        log.textContent += '[webview] click send\\n';",
       '        vscode.postMessage({ type: "send", text });',
+      '        prompt.value = "";',
       '      };',
       '      window.addEventListener("message", (event) => {',
       '        if (event.data.type === "log") {',
@@ -157,6 +164,32 @@ class ClawdbotViewProvider implements vscode.WebviewViewProvider {
       '</html>'
     ].join('\n');
   }
+}
+
+function collectWorkspaceContext(): string {
+  const parts: string[] = [];
+  const folders = vscode.workspace.workspaceFolders || [];
+  if (folders.length === 0) {
+    parts.push('workspace: (none)');
+  } else {
+    parts.push('workspaceFolders:');
+    for (const f of folders) {
+      parts.push(`- ${f.name}: ${f.uri.fsPath}`);
+    }
+  }
+
+  const editor = vscode.window.activeTextEditor;
+  if (editor) {
+    const filePath = editor.document.uri.fsPath;
+    parts.push(`activeFile: ${filePath}`);
+    const sel = editor.document.getText(editor.selection);
+    if (sel) {
+      parts.push('selection:');
+      parts.push(sel);
+    }
+  }
+
+  return parts.join('\n');
 }
 
 function extractOutputText(data: any): string {

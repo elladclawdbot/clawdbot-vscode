@@ -2,7 +2,7 @@
   "name": "clawdbot-vscode",
   "displayName": "Clawdbot",
   "description": "Clawdbot VS Code extension (side panel, debug console, gateway relay)",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "publisher": "elladclawdbot",
   "engines": {
     "vscode": "^1.90.0"
@@ -78,6 +78,11 @@
           "type": "string",
           "default": "flutter run",
           "description": "Command to run Flutter (e.g. flutter run -d chrome)"
+        },
+        "clawdbot.includeWorkspaceContext": {
+          "type": "boolean",
+          "default": true,
+          "description": "Include workspace context (workspace folders, active file, selection)"
         }
       }
     }
