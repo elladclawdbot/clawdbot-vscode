@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 
-const EXT_VERSION = '0.0.2';
+const EXT_VERSION = '0.0.3';
 
 export function activate(context: vscode.ExtensionContext) {
   console.log(`[Clawdbot] Extension activated v${EXT_VERSION}`);
@@ -99,30 +99,32 @@ class ClawdbotViewProvider implements vscode.WebviewViewProvider {
   }
 
   private getHtml(): string {
-    return `<!doctype html>
-<html>
-  <body>
-    <h3>Clawdbot v${EXT_VERSION}</h3>
-    <textarea id="prompt" rows="4" style="width:100%"></textarea>
-    <button id="send" type="button">Send</button>
-    <pre id="log"></pre>
-    <script>
-      const vscode = acquireVsCodeApi();
-      const log = document.getElementById('log');
-      log.textContent += '[webview] ready\n';
-      document.getElementById('send').onclick = () => {
-        const text = document.getElementById('prompt').value;
-        log.textContent += '[webview] click send\n';
-        vscode.postMessage({ type: 'send', text });
-      };
-      window.addEventListener('message', (event) => {
-        if (event.data.type === 'log') {
-          log.textContent += event.data.text + '\n';
-        }
-      });
-    </script>
-  </body>
-</html>`;
+    return [
+      '<!doctype html>',
+      '<html>',
+      '  <body>',
+      `    <h3>Clawdbot v${EXT_VERSION}</h3>`,
+      '    <textarea id="prompt" rows="4" style="width:100%"></textarea>',
+      '    <button id="send" type="button">Send</button>',
+      '    <pre id="log"></pre>',
+      '    <script>',
+      '      const vscode = acquireVsCodeApi();',
+      '      const log = document.getElementById("log");',
+      "      log.textContent += '[webview] ready\\n';",
+      '      document.getElementById("send").onclick = () => {',
+      '        const text = document.getElementById("prompt").value;',
+      "        log.textContent += '[webview] click send\\n';",
+      '        vscode.postMessage({ type: "send", text });',
+      '      };',
+      '      window.addEventListener("message", (event) => {',
+      '        if (event.data.type === "log") {',
+      '          log.textContent += event.data.text + "\\n";',
+      '        }',
+      '      });',
+      '    </script>',
+      '  </body>',
+      '</html>'
+    ].join('\n');
   }
 }
 
