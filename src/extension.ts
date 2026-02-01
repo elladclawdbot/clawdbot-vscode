@@ -1,8 +1,9 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import { spawn, ChildProcessWithoutNullStreams } from 'child_process';
+import * as os from 'os';
 
-const EXT_VERSION = '0.1.1';
+const EXT_VERSION = '0.1.2';
 
 let flutterProc: ChildProcessWithoutNullStreams | undefined;
 let flutterLogs: string[] = [];
@@ -92,6 +93,18 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand('clawdbot.showFlutterLogs', async () => {
       flutterOutput = flutterOutput ?? vscode.window.createOutputChannel('Clawdbot Flutter Logs');
       flutterOutput.show();
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('clawdbot.syncGatewayToWorkspace', async () => {
+      await syncMdFromGateway();
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('clawdbot.syncWorkspaceToGateway', async () => {
+      await syncMdToGateway();
     })
   );
 
@@ -238,7 +251,6 @@ async function collectWorkspaceContext(): Promise<string> {
     parts.push(trimToMax(editor.document.getText()));
   }
 
-  // attached files content
   if (attachedFiles.size) {
     parts.push('attachedFiles:');
     for (const filePath of attachedFiles) {
@@ -256,7 +268,6 @@ async function collectWorkspaceContext(): Promise<string> {
 
   const cfg = vscode.workspace.getConfiguration('clawdbot');
 
-  // include markdown files
   if (cfg.get<boolean>('includeMarkdownFiles') ?? true) {
     const maxMd = cfg.get<number>('maxMarkdownFiles') ?? 20;
     const mdFiles = await vscode.workspace.findFiles('**/*.md', '**/{node_modules,.git,build,dist,ios/Pods,android/.gradle}', maxMd);
@@ -275,7 +286,6 @@ async function collectWorkspaceContext(): Promise<string> {
     }
   }
 
-  // file list (paths only)
   const maxFiles = cfg.get<number>('maxWorkspaceFiles') ?? 200;
   const excludes = '**/{.git,node_modules,build,dist,ios/Pods,android/.gradle,**/*.lock}';
   const files = await vscode.workspace.findFiles('**/*', excludes, maxFiles);
@@ -287,7 +297,6 @@ async function collectWorkspaceContext(): Promise<string> {
     }
   }
 
-  // flutter logs
   const maxLogLines = cfg.get<number>('maxLogLines') ?? 200;
   if (flutterLogs.length) {
     const tail = flutterLogs.slice(-maxLogLines);
@@ -342,6 +351,79 @@ function appendLogs(text: string) {
   if (flutterLogs.length > 2000) {
     flutterLogs = flutterLogs.slice(-2000);
   }
+}
+
+function expandHome(p: string): string {
+  if (p.startsWith('~/')) return path.join(os.homedir(), p.slice(2));
+  return p;
+}
+
+async function syncMdFromGateway() {
+  const cfg = vscode.workspace.getConfiguration('clawdbot');
+  const host = cfg.get<string>('gatewayHost') || '';
+  const user = cfg.get<string>('gatewayUser') || '';
+  const key = expandHome(cfg.get<string>('gatewayKeyPath') || '');
+  const srcRoot = cfg.get<string>('gatewaySourcePath') || '';
+  const destFolder = cfg.get<string>('workspaceMdFolder') || '.clawdbot';
+  const mdFiles = cfg.get<string[]>('mdFilesToSync') || [];
+
+  const ws = vscode.workspace.workspaceFolders?.[0];
+  if (!ws) {
+    vscode.window.showErrorMessage('No workspace folder open.');
+    return;
+  }
+
+  const destPath = path.join(ws.uri.fsPath, destFolder);
+  await vscode.workspace.fs.createDirectory(vscode.Uri.file(destPath));
+
+  const tasks = mdFiles.map((f) => {
+    const remote = `${user}@${host}:${path.posix.join(srcRoot, f)}`;
+    const local = path.join(destPath, f);
+    return scp(remote, local, key);
+  });
+
+  await Promise.all(tasks);
+  vscode.window.showInformationMessage('Synced MD files from gateway.');
+}
+
+async function syncMdToGateway() {
+  const cfg = vscode.workspace.getConfiguration('clawdbot');
+  const host = cfg.get<string>('gatewayHost') || '';
+  const user = cfg.get<string>('gatewayUser') || '';
+  const key = expandHome(cfg.get<string>('gatewayKeyPath') || '');
+  const srcRoot = cfg.get<string>('gatewaySourcePath') || '';
+  const destFolder = cfg.get<string>('workspaceMdFolder') || '.clawdbot';
+  const mdFiles = cfg.get<string[]>('mdFilesToSync') || [];
+
+  const ws = vscode.workspace.workspaceFolders?.[0];
+  if (!ws) {
+    vscode.window.showErrorMessage('No workspace folder open.');
+    return;
+  }
+
+  const localRoot = path.join(ws.uri.fsPath, destFolder);
+
+  const tasks = mdFiles.map((f) => {
+    const local = path.join(localRoot, f);
+    const remote = `${user}@${host}:${path.posix.join(srcRoot, f)}`;
+    return scp(local, remote, key);
+  });
+
+  await Promise.all(tasks);
+  vscode.window.showInformationMessage('Synced MD files to gateway.');
+}
+
+function scp(src: string, dest: string, keyPath: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const args = ['-i', keyPath, '-o', 'StrictHostKeyChecking=no', src, dest];
+    const proc = spawn('scp', args, { shell: false });
+    let err = '';
+    proc.stderr.on('data', (d) => (err += d.toString()));
+    proc.on('exit', (code) => {
+      if (code === 0) resolve();
+      else reject(new Error(err || `scp failed with code ${code}`));
+    });
+  });
 }
 
 function extractOutputText(data: any): string {

@@ -2,7 +2,7 @@
   "name": "clawdbot-vscode",
   "displayName": "Clawdbot",
   "description": "Clawdbot VS Code extension (side panel, debug console, gateway relay)",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "publisher": "elladclawdbot",
   "engines": {
     "vscode": "^1.90.0"
@@ -66,6 +66,14 @@
       {
         "command": "clawdbot.showFlutterLogs",
         "title": "Clawdbot: Show Flutter Logs"
+      },
+      {
+        "command": "clawdbot.syncGatewayToWorkspace",
+        "title": "Clawdbot: Sync MD from Gateway"
+      },
+      {
+        "command": "clawdbot.syncWorkspaceToGateway",
+        "title": "Clawdbot: Sync MD to Gateway"
       }
     ],
     "configuration": {
@@ -125,6 +133,42 @@
           "type": "number",
           "default": 20,
           "description": "Max number of markdown files to include"
+        },
+        "clawdbot.gatewayHost": {
+          "type": "string",
+          "default": "100.78.150.39",
+          "description": "Gateway SSH host"
+        },
+        "clawdbot.gatewayUser": {
+          "type": "string",
+          "default": "ubuntu",
+          "description": "Gateway SSH user"
+        },
+        "clawdbot.gatewayKeyPath": {
+          "type": "string",
+          "default": "~/.ssh/id_ed25519",
+          "description": "SSH private key path"
+        },
+        "clawdbot.gatewaySourcePath": {
+          "type": "string",
+          "default": "/home/ubuntu/clawd",
+          "description": "Gateway source path"
+        },
+        "clawdbot.workspaceMdFolder": {
+          "type": "string",
+          "default": ".clawdbot",
+          "description": "Workspace folder to store synced MD files"
+        },
+        "clawdbot.mdFilesToSync": {
+          "type": "array",
+          "default": [
+            "SOUL.md",
+            "USER.md",
+            "MEMORY.md",
+            "TOOLS.md",
+            "AGENTS.md"
+          ],
+          "description": "MD files to sync"
         }
       }
     }
