@@ -2,7 +2,7 @@
   "name": "clawdbot-vscode",
   "displayName": "Clawdbot",
   "description": "Clawdbot VS Code extension (side panel, debug console, gateway relay)",
-  "version": "0.0.8",
+  "version": "0.1.0",
   "publisher": "elladclawdbot",
   "engines": {
     "vscode": "^1.90.0"
@@ -54,6 +54,18 @@
       {
         "command": "clawdbot.flutterHotRestart",
         "title": "Clawdbot: Flutter Hot Restart"
+      },
+      {
+        "command": "clawdbot.addFileToContext",
+        "title": "Clawdbot: Add File to Context"
+      },
+      {
+        "command": "clawdbot.clearContextFiles",
+        "title": "Clawdbot: Clear Context Files"
+      },
+      {
+        "command": "clawdbot.showFlutterLogs",
+        "title": "Clawdbot: Show Flutter Logs"
       }
     ],
     "configuration": {
@@ -88,6 +100,21 @@
           "type": "number",
           "default": 200,
           "description": "Max number of workspace file paths to include in context"
+        },
+        "clawdbot.maxFileChars": {
+          "type": "number",
+          "default": 20000,
+          "description": "Max characters per file to include in context"
+        },
+        "clawdbot.maxLogLines": {
+          "type": "number",
+          "default": 200,
+          "description": "Max log lines to include from Flutter run"
+        },
+        "clawdbot.autoHotReloadOnSave": {
+          "type": "boolean",
+          "default": false,
+          "description": "Auto hot-reload after saving a file (requires Flutter run)"
         }
       }
     }

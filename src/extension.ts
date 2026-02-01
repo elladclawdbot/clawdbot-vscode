@@ -1,8 +1,13 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
+import { spawn, ChildProcessWithoutNullStreams } from 'child_process';
 
-const EXT_VERSION = '0.0.6';
-let flutterTerminal: vscode.Terminal | undefined;
+const EXT_VERSION = '0.1.0';
+
+let flutterProc: ChildProcessWithoutNullStreams | undefined;
+let flutterLogs: string[] = [];
+let flutterOutput: vscode.OutputChannel | undefined;
+let attachedFiles = new Set<string>();
 
 export function activate(context: vscode.ExtensionContext) {
   console.log(`[Clawdbot] Extension activated v${EXT_VERSION}`);
@@ -37,32 +42,65 @@ export function activate(context: vscode.ExtensionContext) {
   );
 
   context.subscriptions.push(
+    vscode.commands.registerCommand('clawdbot.addFileToContext', async () => {
+      const uris = await vscode.window.showOpenDialog({
+        canSelectMany: true,
+        openLabel: 'Add to Context'
+      });
+      if (!uris) return;
+      for (const u of uris) attachedFiles.add(u.fsPath);
+      vscode.window.showInformationMessage(`Added ${uris.length} file(s) to context.`);
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('clawdbot.clearContextFiles', async () => {
+      attachedFiles.clear();
+      vscode.window.showInformationMessage('Cleared context files.');
+    })
+  );
+
+  context.subscriptions.push(
     vscode.commands.registerCommand('clawdbot.flutterRun', async () => {
       const cfg = vscode.workspace.getConfiguration('clawdbot');
       const cmd = cfg.get<string>('flutterRunCommand') || 'flutter run';
-      flutterTerminal = flutterTerminal ?? vscode.window.createTerminal('Clawdbot Flutter');
-      flutterTerminal.show();
-      flutterTerminal.sendText(cmd);
+      startFlutter(cmd);
     })
   );
 
   context.subscriptions.push(
     vscode.commands.registerCommand('clawdbot.flutterHotReload', async () => {
-      if (!flutterTerminal) {
-        vscode.window.showWarningMessage('Flutter terminal not started. Run Clawdbot: Flutter Run first.');
+      if (!flutterProc) {
+        vscode.window.showWarningMessage('Flutter process not started. Run Clawdbot: Flutter Run first.');
         return;
       }
-      flutterTerminal.sendText('r');
+      flutterProc.stdin.write('r\n');
     })
   );
 
   context.subscriptions.push(
     vscode.commands.registerCommand('clawdbot.flutterHotRestart', async () => {
-      if (!flutterTerminal) {
-        vscode.window.showWarningMessage('Flutter terminal not started. Run Clawdbot: Flutter Run first.');
+      if (!flutterProc) {
+        vscode.window.showWarningMessage('Flutter process not started. Run Clawdbot: Flutter Run first.');
         return;
       }
-      flutterTerminal.sendText('R');
+      flutterProc.stdin.write('R\n');
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('clawdbot.showFlutterLogs', async () => {
+      flutterOutput = flutterOutput ?? vscode.window.createOutputChannel('Clawdbot Flutter Logs');
+      flutterOutput.show();
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.workspace.onDidSaveTextDocument(() => {
+      const cfg = vscode.workspace.getConfiguration('clawdbot');
+      if (cfg.get<boolean>('autoHotReloadOnSave') && flutterProc) {
+        flutterProc.stdin.write('r\n');
+      }
     })
   );
 }
@@ -196,6 +234,24 @@ async function collectWorkspaceContext(): Promise<string> {
       parts.push('selection:');
       parts.push(sel);
     }
+    parts.push('activeFileContent:');
+    parts.push(trimToMax(editor.document.getText()));
+  }
+
+  // attached files content
+  if (attachedFiles.size) {
+    parts.push('attachedFiles:');
+    for (const filePath of attachedFiles) {
+      try {
+        const uri = vscode.Uri.file(filePath);
+        const data = await vscode.workspace.fs.readFile(uri);
+        const text = Buffer.from(data).toString('utf8');
+        parts.push(`--- ${filePath} ---`);
+        parts.push(trimToMax(text));
+      } catch (e) {
+        parts.push(`--- ${filePath} (failed to read) ---`);
+      }
+    }
   }
 
   // file list (paths only)
@@ -211,7 +267,61 @@ async function collectWorkspaceContext(): Promise<string> {
     }
   }
 
+  // flutter logs
+  const maxLogLines = cfg.get<number>('maxLogLines') ?? 200;
+  if (flutterLogs.length) {
+    const tail = flutterLogs.slice(-maxLogLines);
+    parts.push('flutterLogsTail:');
+    parts.push(tail.join('\n'));
+  }
+
   return parts.join('\n');
+}
+
+function trimToMax(text: string): string {
+  const cfg = vscode.workspace.getConfiguration('clawdbot');
+  const maxChars = cfg.get<number>('maxFileChars') ?? 20000;
+  if (text.length <= maxChars) return text;
+  return text.slice(0, maxChars) + `\n[trimmed ${text.length - maxChars} chars]`;
+}
+
+function startFlutter(cmd: string) {
+  if (flutterProc) {
+    vscode.window.showWarningMessage('Flutter run already active.');
+    return;
+  }
+
+  flutterOutput = flutterOutput ?? vscode.window.createOutputChannel('Clawdbot Flutter Logs');
+  flutterOutput.clear();
+  flutterOutput.show();
+
+  flutterLogs = [];
+  flutterProc = spawn(cmd, { shell: true });
+
+  flutterProc.stdout.on('data', (data) => {
+    const text = data.toString();
+    flutterOutput?.append(text);
+    appendLogs(text);
+  });
+
+  flutterProc.stderr.on('data', (data) => {
+    const text = data.toString();
+    flutterOutput?.append(text);
+    appendLogs(text);
+  });
+
+  flutterProc.on('exit', (code) => {
+    flutterOutput?.appendLine(`\n[Flutter exited with code ${code}]`);
+    flutterProc = undefined;
+  });
+}
+
+function appendLogs(text: string) {
+  const lines = text.split(/\r?\n/).filter(Boolean);
+  flutterLogs.push(...lines);
+  if (flutterLogs.length > 2000) {
+    flutterLogs = flutterLogs.slice(-2000);
+  }
 }
 
 function extractOutputText(data: any): string {
