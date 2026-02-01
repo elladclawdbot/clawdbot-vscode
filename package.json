@@ -2,7 +2,7 @@
   "name": "clawdbot-vscode",
   "displayName": "Clawdbot",
   "description": "Clawdbot VS Code extension (side panel, debug console, gateway relay)",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "publisher": "elladclawdbot",
   "engines": {
     "vscode": "^1.90.0"
