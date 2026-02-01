@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import { spawn, ChildProcessWithoutNullStreams } from 'child_process';
 
-const EXT_VERSION = '0.1.0';
+const EXT_VERSION = '0.1.1';
 
 let flutterProc: ChildProcessWithoutNullStreams | undefined;
 let flutterLogs: string[] = [];
@@ -254,8 +254,28 @@ async function collectWorkspaceContext(): Promise<string> {
     }
   }
 
-  // file list (paths only)
   const cfg = vscode.workspace.getConfiguration('clawdbot');
+
+  // include markdown files
+  if (cfg.get<boolean>('includeMarkdownFiles') ?? true) {
+    const maxMd = cfg.get<number>('maxMarkdownFiles') ?? 20;
+    const mdFiles = await vscode.workspace.findFiles('**/*.md', '**/{node_modules,.git,build,dist,ios/Pods,android/.gradle}', maxMd);
+    if (mdFiles.length) {
+      parts.push('markdownFiles:');
+      for (const f of mdFiles) {
+        try {
+          const data = await vscode.workspace.fs.readFile(f);
+          const text = Buffer.from(data).toString('utf8');
+          parts.push(`--- ${f.fsPath} ---`);
+          parts.push(trimToMax(text));
+        } catch (e) {
+          parts.push(`--- ${f.fsPath} (failed to read) ---`);
+        }
+      }
+    }
+  }
+
+  // file list (paths only)
   const maxFiles = cfg.get<number>('maxWorkspaceFiles') ?? 200;
   const excludes = '**/{.git,node_modules,build,dist,ios/Pods,android/.gradle,**/*.lock}';
   const files = await vscode.workspace.findFiles('**/*', excludes, maxFiles);
