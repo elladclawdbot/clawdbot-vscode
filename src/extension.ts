@@ -183,7 +183,7 @@ async function collectWorkspaceContext(): Promise<string> {
   } else {
     parts.push('workspaceFolders:');
     for (const f of folders) {
-      parts.push(`- ${f.name}: ${f.uri.fsPath}`);
+      parts.push(`- ${f.name}: ${f.fsPath}`);
     }
   }
 
@@ -206,7 +206,7 @@ async function collectWorkspaceContext(): Promise<string> {
   if (files.length) {
     parts.push(`workspaceFiles (first ${files.length}):`);
     for (const f of files) {
-      const rel = folders[0] ? path.relative(folders[0].uri.fsPath, f.uri.fsPath) : f.uri.fsPath;
+      const rel = folders[0] ? path.relative(folders[0].uri.fsPath, f.fsPath) : f.fsPath;
       parts.push(`- ${rel}`);
     }
   }
